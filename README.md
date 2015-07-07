@@ -1,5 +1,14 @@
 # QVisu - a Qt-based visualization for smart homes
 
+QVisu lets you display the status of your smart home. Contrary to other approaches like [CometVisu](http://www.cometvisu.org) and [SmartVisu](http://www.smartvisu.de), 
+it is not browser-based, but a program of its own. It is based on the QT5 framework, making it portable across [a wide range of platforms](http://doc.qt.io/QtSupportedPlatforms/index.html).
+
+The look of the visualization is inspired by the Windows 8 tiles. 
+
+Currently, only Windows binaries are provided. Other planned targets are Linux x86 (Ubuntu) and Linux armhf (Raspberry Pi). Anyone is more than welcome to generate Android, Mac, iOS, or other versions.
+
+![](screenshot.png)
+
 ## CAUTION
 
 This is a preliminary version, which is known to have bugs. As it does not write anything to the local disk system (with the exception of the Google calendar element, which writes some values to the registry), it should not cause any major damage to the device it is running on. 
@@ -8,15 +17,6 @@ Still, you use it completely at your own risk. It can and will interact with you
 ## License
 
 QVisu is licensed under GPL v2. The Websocket driver is licensed under LGPL v2.
-
-## Scope
-
-QVisu lets you display the status of your smart home. Contrary to other approaches like [CometVisu](http://www.cometvisu.org) and [SmartVisu](http://www.smartvisu.de), 
-it is not browser-based, but a program of its own. It is based on the QT5 framework, making it portable across [a wide range of platforms](http://doc.qt.io/QtSupportedPlatforms/index.html).
-
-The look of the visualization is inspired by the Windows 8 tiles. 
-
-Currently, only Windows binaries are provided. Other planned targets are Linux x86 (Ubuntu) and Linux armhf (Raspberry Pi). Anyone is more than welcome to generate Android, Mac, iOS, or other versions.
 
 ## Backend
 
@@ -212,7 +212,7 @@ On light backgrounds, it is set to black. On light backgrounds, it is set to whi
 
 #### Icons
 
-QVisu only supports SVG graphics. Pixel graphics like PNG, JPG, GIF, ICO are not supported.
+QVisu supports SVG, PNG, JPG, and GIF graphics. JPG and GIF have not yet been tested.
 
 #### Switch icons {#switchicons}
 
@@ -222,13 +222,15 @@ Icons which represent a status (i.e. on/off) can be specified in a number of way
 
   ```<sw-icon>my_icon.svg</sw-icon>```
 
-  In off-state, QVisu will then display the icon as-is. In on state, it will try to recolor the SVG to orange.
+  In off-state, QVisu will then display the icon as-is. In on state, it will try to recolor the image to orange, if it is an SVG file.
 
 - You can specify two icons for on and off state, simply separated by a comma:
   
   ```<sw-icon>icon_off.svg,icon_on.svg</sw-icon>```
   
-- Automatic recoloring:
+  This can also be used with pixel graphics.
+  
+- Automatic recoloring (SVG files only):
  
   ```<sw-icon color="..." active-color="..." color-mode="...">my_icon.svg</sw-icon>```
 

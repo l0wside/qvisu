@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     if (argc > 1) {
         xml_file.setFileName(argv[1]);
     } else {
-        xml_file.setFileName("C:\\Users\\max\\ti\\qt5\\QVisu\\qvisu.xml");
+        return 0;
     }
     if (!xml_file.open(QIODevice::ReadOnly)) {
         qDebug() << "XML configuration file " + xml_file.fileName() + " not found";
