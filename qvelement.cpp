@@ -268,7 +268,7 @@ QString QVElement::colorString(QString color) {
 /** Generate element depending on XML configuration.
  * When implementing new element types, add them here after creating the class.
  */
-QVElement *createQVElement(QDomElement xml_desc,QString container,QWidget *parent) {
+QVElement* QVElement::createQVElement(QDomElement xml_desc,QString container,QWidget *parent) {
     QString type = xml_desc.attribute("type");
     if (type.isNull() || (type.length() == 0)) {
         return NULL;

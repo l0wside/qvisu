@@ -68,7 +68,7 @@ QVMainWindow::QVMainWindow(uint dim_x, uint dim_y, QDomElement xml_data, QWidget
             continue;
         }
         for (QDomElement xml_elem = container.firstChildElement("element"); !xml_elem.isNull(); xml_elem = xml_elem.nextSiblingElement("element")) {
-            QVElement *elem = createQVElement(xml_elem,container.attribute("name"),this);
+            QVElement *elem = QVElement::createQVElement(xml_elem,container.attribute("name"),this);
             if (elem != NULL) {
                 elements.append(elem);
             }

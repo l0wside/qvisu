@@ -40,7 +40,11 @@ QString QVItem::getAction() {
 }
 
 QString QVItem::getAttribute(QString attribute) {
-    return attributes.find(attribute).value();
+    if (attributes.contains(attribute)) {
+        return attributes.find(attribute).value();
+    } else {
+        return QString();
+    }
 }
 
 QString QVItem::toString() {
