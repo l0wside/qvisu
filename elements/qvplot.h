@@ -18,6 +18,7 @@
 #define QVPLOT_H
 
 #include <QLabel>
+#include <QTimer>
 #include "../qvelement.h"
 #include "../qvsvgwidget.h"
 #include "../qviconwidget.h"
@@ -42,6 +43,9 @@ public slots:
     void onInitCompleted();
     void onSeriesReceived(QString,QMap<double,double>);
 
+protected slots:
+    void onInitCompleted_delayed();
+
 private:
     void redrawSeries();
     void addPlot(QDomElement xml_elem, int axis);
@@ -60,6 +64,8 @@ private:
     static const int label_size = 12;
     static const int padding = 6;
     QString background_color;
+
+    QTimer delay_timer;
 };
 
 #endif // QVPLOT_H

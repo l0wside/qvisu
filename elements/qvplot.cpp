@@ -199,10 +199,18 @@ void QVPlot::mousePressEvent(QMouseEvent*) {
 }
 
 void QVPlot::onInitCompleted() {
+    delay_timer.setSingleShot(true);
+    delay_timer.setInterval(5000);
+    QObject::connect(&delay_timer,SIGNAL(timeout()),this,SLOT(onInitCompleted_delayed()));
+    delay_timer.start();
+}
+
+void QVPlot::onInitCompleted_delayed() {
     for (QMap<QString,series_t*>::iterator iter = series.begin(); iter != series.end(); iter++) {
         emit requestSeries(iter.key(),(*iter)->type,series_start);
     }
 }
+
 
 void QVPlot::onSeriesReceived(QString item,QMap<double,double> data) {
     qDebug() << "series received: " << item << data.count();
