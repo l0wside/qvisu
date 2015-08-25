@@ -41,10 +41,10 @@ QVDriver::QVDriver(QDomElement xml_data, QStringList item_list, QObject *parent)
         QString s_url = QStringLiteral("ws://").append(conn_elem.text());
         webSocketUrl = QUrl(s_url);
         qDebug() << webSocketUrl;
-        QObject::connect(webSocket,SIGNAL(connected()),this,SLOT(onConnected()));
-        QObject::connect(webSocket,SIGNAL(disconnected()),this,SLOT(onDisconnected()));
-        QObject::connect(webSocket,SIGNAL(textMessageReceived(QString)),this,SLOT(onTextMessageReceived(QString)));
-        QObject::connect(this,SIGNAL(sendTextMessage(QString)),webSocket,SLOT(sendTextMessage(QString)));
+        QObject::connect(webSocket,SIGNAL(connected()),this,SLOT(onConnected()),Qt::QueuedConnection);
+        QObject::connect(webSocket,SIGNAL(disconnected()),this,SLOT(onDisconnected()),Qt::QueuedConnection);
+        QObject::connect(webSocket,SIGNAL(textMessageReceived(QString)),this,SLOT(onTextMessageReceived(QString)),Qt::QueuedConnection);
+        QObject::connect(this,SIGNAL(sendTextMessage(QString)),webSocket,SLOT(sendTextMessage(QString)),Qt::QueuedConnection);
 
         if (conn_elem.hasAttribute("log")) {
             webSocket->startLogging(conn_elem.attribute("log"));
@@ -61,7 +61,7 @@ QVDriver::QVDriver(QDomElement xml_data, QStringList item_list, QObject *parent)
         reopen_timer = new QTimer(this);
         reopen_timer->setSingleShot(true);
         reopen_timer->setInterval(1000);
-        QObject::connect(reopen_timer,SIGNAL(timeout()),this,SLOT(onReopenTimer()));
+        QObject::connect(reopen_timer,SIGNAL(timeout()),this,SLOT(onReopenTimer()),Qt::QueuedConnection);
 
         return;
     }
@@ -78,7 +78,9 @@ void QVDriver::shutdown() {
     emit valueChanged("#driver-statustext","Offline");
     emit valueChanged("#driver-status","0");
     closing = true;
-    webSocket->shutdown();
+    if (webSocket) {
+        webSocket->shutdown();
+    }
 }
 
 void QVDriver::onValueModified(QString id, QString value) {
@@ -145,6 +147,20 @@ void QVDriver::onReopenTimer() {
         return;
     }
     qDebug() << "Reopening";
+
+    webSocket->deleteLater();
+    webSocket = new QVWebsocket();
+
+#ifdef USE_THREADS
+    socket_thread = new QThread();
+#endif
+
+    closing = false;
+    QObject::connect(webSocket,SIGNAL(connected()),this,SLOT(onConnected()),Qt::QueuedConnection);
+    QObject::connect(webSocket,SIGNAL(disconnected()),this,SLOT(onDisconnected()),Qt::QueuedConnection);
+    QObject::connect(webSocket,SIGNAL(textMessageReceived(QString)),this,SLOT(onTextMessageReceived(QString)),Qt::QueuedConnection);
+    QObject::connect(this,SIGNAL(sendTextMessage(QString)),webSocket,SLOT(sendTextMessage(QString)),Qt::QueuedConnection);
+
     emit valueChanged("#driver-statustext","Reconnecting");
     emit valueChanged("#driver-status","0");
     webSocket->open(webSocketUrl);

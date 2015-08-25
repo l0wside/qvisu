@@ -26,6 +26,10 @@ QVWebsocket::QVWebsocket(QObject *parent) :
 {
     socket = new QTcpSocket();
     status = socketClosed;
+    open_timer.setSingleShot(true);
+    open_timer.setInterval(5000);
+    QObject::connect(&open_timer,SIGNAL(timeout()),this,SLOT(close()));
+
     close_timer.setSingleShot(true);
     close_timer.setInterval(1000);
     QObject::connect(&close_timer,SIGNAL(timeout()),this,SLOT(close()));
@@ -60,10 +64,13 @@ void QVWebsocket::open(QUrl url) {
 
     path = url.path();
 
-    QObject::connect(socket,SIGNAL(connected()),this,SLOT(socketConnected()));
-    QObject::connect(socket,SIGNAL(disconnected()),this,SLOT(socketDisconnected()));
-    QObject::connect(socket,SIGNAL(readyRead()),this,SLOT(socketReadyRead()));
+    QObject::connect(socket,SIGNAL(connected()),this,SLOT(socketConnected()),Qt::QueuedConnection);
+    QObject::connect(socket,SIGNAL(disconnected()),this,SLOT(socketDisconnected()),Qt::QueuedConnection);
+    QObject::connect(socket,SIGNAL(readyRead()),this,SLOT(socketReadyRead()),Qt::QueuedConnection);
+    QObject::connect(socket,SIGNAL(error(QAbstractSocket::SocketError)),this,SLOT(onSocketError(QAbstractSocket::SocketError)));
     inputBuffer.clear();
+    qDebug() << "calling connectToHost()" << host << port;
+    open_timer.start();
     socket->connectToHost(host,port);
 }
 
@@ -83,7 +90,7 @@ void QVWebsocket::shutdown() {
 
 void QVWebsocket::close() {
     qDebug() << "Websocket close";
-
+    emit disconnected();
     socket->close();
     status = socketClosed;
 }
@@ -129,6 +136,7 @@ void QVWebsocket::sendTextMessage(QString message) {
 void QVWebsocket::socketConnected() {
     qDebug() << "Socket Connected";
     key.clear();
+    open_timer.stop();
     QTime time = QTime::currentTime();
     qsrand((uint)time.msec());
     for (int n=0; n < 16; n++) {
@@ -156,6 +164,7 @@ void QVWebsocket::socketConnected() {
 }
 
 void QVWebsocket::socketDisconnected() {
+    open_timer.stop();
     qDebug() << "Socket Disconnected";
     if (status != socketClosed) {
         emit disconnected();

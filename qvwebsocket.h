@@ -66,12 +66,15 @@ private slots:
     void socketDisconnected();
     /** Called when the underlying TCP socket delivers data */
     void socketReadyRead();
+    void onSocketError(QAbstractSocket::SocketError err) {
+        qDebug() << err;
+    }
 
 private:
     QTcpSocket *socket;
     QString host, path, key;
     QByteArray inputBuffer;
-    QTimer close_timer;
+    QTimer open_timer, close_timer;
     QFile log_file;
     QTextStream log_stream;
 
