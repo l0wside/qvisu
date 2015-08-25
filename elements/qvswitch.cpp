@@ -17,7 +17,7 @@
 #include "qvswitch.h"
 #include <QLabel>
 
-QVSwitch::QVSwitch(QDomElement xml_desc, QString container, bool readonly, QWidget *parent) :
+QVSwitch::QVSwitch(QDomElement xml_desc, QString container, QString type, QWidget *parent) :
     QVElement(xml_desc,container,parent)
 {
     QDomElement xml_elem;
@@ -52,8 +52,27 @@ QVSwitch::QVSwitch(QDomElement xml_desc, QString container, bool readonly, QWidg
         w_text->setObjectName("mini");
     }
 
+    trigger_value = false;
+    if (xml_desc.hasAttribute("value")) {
+        QString s_value = xml_desc.attribute("value").toLower();
+        if ((s_value == "true") || (s_value == "1")) {
+            trigger_value = true;
+        }
+    }
+
     value = false;
-    this->readonly = readonly;
+    if (type.toLower() == "status") {
+        this->type = type_status;
+    } else if (type.toLower() == "trigger") {
+        this->type = type_trigger;
+    } else if (type.toLower() == "confirm") {
+        this->type = type_confirm;
+    } else {
+        this->type = type_switch;
+    }
+
+    qDebug() << "QVSwitch color" << color;
+    setStyleSheet(color);
 }
 
 
@@ -88,6 +107,9 @@ void QVSwitch::resizeEvent(QResizeEvent * event) {
         }
         w_sw_icon->setFixedSize(icon_sw_width,icon_sw_height);
         w_sw_icon->move(ofs_x()+(int)((width()-icon_sw_width)/2),ofs_y()+(int)((icon_sw_maxheight-icon_sw_height)/2));
+        if (type == type_trigger) {
+            w_sw_icon->setStatus(false);
+        }
     }
 
     int ofs_icon = ofs_y() + icon_sw_maxheight;
@@ -104,29 +126,42 @@ void QVSwitch::resizeEvent(QResizeEvent * event) {
     w_text->move(ofs_x()+(int)((width()-w_text->sizeHint().width()+icon_width)/2),ofs_text);
 }
 
-
-
 void QVSwitch::mousePressEvent(QMouseEvent *event) {
-    if (readonly) {
-        return;
-    }
     if (event) {
         event->accept();
     }
-    value = !value;
+
+    switch(type) {
+    case type_confirm:
+        if (!value) {
+            return;
+        }
+        value = false;
+        break;
+    case type_status:
+        return;
+    case type_trigger:
+        value = trigger_value;
+        break;
+    default:
+        value = !value;
+        break;
+    }
 
     QString item = getItemByAction("switch");
     if (item.isNull()) {
         return;
     }
 
-    if (w_sw_icon != 0) {
-        w_sw_icon->setStatus(this->value);
-    }
-    if (this->value) {
-        setStyleSheet(active_color);
-    } else {
-        setStyleSheet(color);
+    if (type != type_trigger) {
+        if (w_sw_icon != 0) {
+            w_sw_icon->setStatus(this->value);
+        }
+        if (this->value) {
+            setStyleSheet(active_color);
+        } else {
+            setStyleSheet(color);
+        }
     }
 
     qDebug() << "Emitting " << item << " to " << QString::number(value);
@@ -139,7 +174,7 @@ void QVSwitch::svgPressed() {
 
 
 void QVSwitch::onValueChanged(QString item, QString value) {
-    if (!items.contains(item)) {
+    if (!items.contains(item) || (type == type_trigger)) {
         return;
     }
 //    qDebug() << "modified: " << item << " to " << value;

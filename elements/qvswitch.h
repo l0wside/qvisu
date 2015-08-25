@@ -29,7 +29,7 @@ class QVSwitch : public QVElement
 {
     Q_OBJECT
 public:
-    explicit QVSwitch(QDomElement xml_desc, QString container, bool readonly = false, QWidget *parent = 0);
+    explicit QVSwitch(QDomElement xml_desc, QString container, QString type="switch", QWidget *parent = 0);
 
 protected:
     void resizeEvent(QResizeEvent *);
@@ -51,7 +51,13 @@ private:
     QLabel *w_text;
 
     bool value;
-    bool readonly;
+    bool trigger_value;
+    enum {
+        type_switch,
+        type_status,
+        type_trigger,
+        type_confirm
+    } type;
 };
 
 #endif // QVSWITCH_H
