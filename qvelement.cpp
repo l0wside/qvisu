@@ -21,12 +21,17 @@
 #include "elements/qvswitch.h"
 #include "elements/qvdimmer.h"
 #include "elements/qvshutter.h"
+#include "elements/qvcolor.h"
 #include "elements/qvplot.h"
 #include "elements/qvheating.h"
+#include "elements/qvefa.h"
 #include "elements/qvfritz.h"
 #include "elements/qvweather.h"
 #include "elements/qvgooglecalendar.h"
 #include "elements/qvvideo.h"
+#ifdef DOORCOM
+#include "elements/qvdoorcom.h"
+#endif
 
 /** Get position of element and container. All other info is extracted in the derived classes */
 
@@ -89,6 +94,8 @@ QVElement::QVElement(QDomElement xml_desc,QString container,QWidget *parent) : Q
         color = QStringLiteral("QFrame { background-color:") + colorString(c_elem.text()) + QStringLiteral(" }");
         color += c_font;
         setStyleSheet(color);
+    } else {
+        color = "QFrame { background-color:" + colorString("cyan") + " }";
     }
     c_elem = xml_desc.firstChildElement("active-color");
     if (!c_elem.isNull()) {
@@ -197,6 +204,51 @@ int QVElement::ofs_y() {
     return contentsRect().y();
 }
 
+void QVElement::fitInBox(QWidget *widget, int x, int y, int w, int h) {
+    bool align_right = false, align_bottom = false;
+    if (w < 0) {
+        align_right = true;
+        w = -w;
+    }
+    if (h < 0) {
+        align_bottom = true;
+        h = -h;
+    }
+
+    qDebug() << "fiB recommends " << widget->sizeHint().width() << widget->sizeHint().height();
+    if ((widget == 0) || (w == 0) || (h == 0) || (widget->sizeHint().width() <= 0) || (widget->sizeHint().height() <= 0)) {
+        return;
+    }
+
+    double ar_widget = ((double)widget->sizeHint().height())/((double)widget->sizeHint().width());
+    double ar_box = ((double)h)/((double)w);
+    int widget_w, widget_h, widget_x, widget_y;
+
+    if (ar_widget < ar_box) {
+        /* Wide widget, narrow box */
+        widget_w = w;
+        widget_h = (int)(w*ar_widget);
+        widget_x = x;
+        widget_y = y + (int)((h-widget_h)/2);
+    } else {
+        /* Narrow widget, wide box */
+        widget_h = h;
+        widget_w = (int)(h/ar_widget);
+        widget_x = x + (int)((w-widget_w)/2);
+        widget_y = y;
+    }
+    if (align_bottom) {
+        widget_y -= h;
+    }
+    if (align_right) {
+        widget_x -= w;
+    }
+
+    widget->setFixedSize(widget_w,widget_h);
+    widget->move(widget_x,widget_y);
+}
+
+
 /** Returns the color code for a Windows color name.
  * If the name is not found, it will return the input string (as lowercase). */
 QString QVElement::colorString(QString color) {
@@ -269,7 +321,7 @@ QString QVElement::colorString(QString color) {
  * When implementing new element types, add them here after creating the class.
  */
 QVElement* QVElement::createQVElement(QDomElement xml_desc,QString container,QWidget *parent) {
-    QString type = xml_desc.attribute("type");
+    QString type = xml_desc.attribute("type").toLower();
     if (type.isNull() || (type.length() == 0)) {
         return NULL;
     }
@@ -279,17 +331,25 @@ QVElement* QVElement::createQVElement(QDomElement xml_desc,QString container,QWi
     if (type == "selector") {
         element = new QVSelector(xml_desc,container,parent);
     } else if (type == "switch") {
-        element = new QVSwitch(xml_desc,container,false,parent);
+        element = new QVSwitch(xml_desc,container,QStringLiteral("switch"),parent);
     } else if (type == "status") {
-        element = new QVSwitch(xml_desc,container,true,parent);
+        element = new QVSwitch(xml_desc,container,QStringLiteral("status"),parent);
+    } else if (type == "trigger") {
+        element = new QVSwitch(xml_desc,container,QStringLiteral("trigger"),parent);
+    } else if (type == "confirm") {
+        element = new QVSwitch(xml_desc,container,QStringLiteral("confirm"),parent);
     } else if (type == "dimmer") {
         element = new QVDimmer(xml_desc,container,parent);
     } else if (type == "shutter") {
         element = new QVShutter(xml_desc,container,parent);
+    } else if (type == "color") {
+        element = new QVColor(xml_desc,container,parent);
     } else if (type == "plot") {
         element = new QVPlot(xml_desc,container,parent);
     } else if (type == "heating") {
         element = new QVHeating(xml_desc,container,parent);
+    } else if (type == "efa") {
+        element = new QVEfa(xml_desc,container,parent);
     } else if (type == "fritzbox") {
         element = new QVFritz(xml_desc,container,parent);
     } else if (type == "weather") {
@@ -299,6 +359,10 @@ QVElement* QVElement::createQVElement(QDomElement xml_desc,QString container,QWi
 #ifdef VIDEO
     } else if (type == "video") {
         element = new QVVideo(xml_desc,container,parent);
+#endif
+#ifdef DOORCOM
+    } else if (type == "doorcom") {
+        element = new QVDoorcom(xml_desc,container,parent);
 #endif
     }
     if (element == NULL) {
