@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="361px"
+	 height="361px" viewBox="0 0 361 361" style="enable-background:new 0 0 361 361;" xml:space="preserve">
+<linearGradient id="rtge" x1="0%" y1="0%" x2="100%" y2="50%">
+  <stop offset="0%" stop-color="#ff0000" />
+  <stop offset="100%" stop-color="#ffff00" />
+</linearGradient>
+<linearGradient id="gegn">
+  <stop offset="0%" stop-color="#ffff00" />
+  <stop offset="100%" stop-color="#00ff00" />
+</linearGradient>
+<linearGradient id="gncy" x1="0%" x2="70%" y1="0%" y2="20%"> 
+  <stop offset="0%" stop-color="#00ff00" />
+  <stop offset="100%" stop-color="#00ffff" />
+</linearGradient>
+<linearGradient id="cybl" x1="20%" x2="90%" y1="20%" y2="60%">
+  <stop offset="0%" stop-color="#00ffff" />
+  <stop offset="100%" stop-color="#0000ff" />
+</linearGradient>
+<linearGradient id="blli" x1="0%" x2="100%" y1="0%" y2="20%">
+  <stop offset="0%" stop-color="#0000ff" />
+  <stop offset="100%" stop-color="#ff00ff" />
+</linearGradient>
+<linearGradient id="lirt">
+  <stop offset="0%" stop-color="#ff00ff" />
+  <stop offset="100%" stop-color="#ff0000" />
+</linearGradient>
+
+<g id="control_x5F_1">
+
+<path style="stroke:none;fill:url(#rtge)" transform="rotate(0 180 180)" d="M180,10 a160 160 180 0 1 138.6 80 l-25.98,15 a130 130 0 0 0 -112.62 -65" />
+                                         
+<path style="stroke:none;fill:url(#gegn)" transform="rotate(60 180 170)" d="M180,10 a160 160 180 0 1 138.6 80 l-25.98,15 a130 130 0 0 0 -112.62 -65" />
+
+<path style="stroke:none;fill:url(#gncy)" transform="rotate(120 180 170)" d="M180,10 a160 160 180 0 1 138.6 80 l-25.98,15 a130 130 0 0 0 -112.62 -65" />
+
+<path style="stroke:none;fill:url(#cybl)" transform="rotate(180.1 180 170)" d="M180,10 a160 160 180 0 1 138.6 80 l-25.98,15 a130 130 0 0 0 -112.62 -65" />
+
+<path style="stroke:none;fill:url(#blli)" transform="rotate(240 180 170)" d="M180,10 a160 160 180 0 1 138.6 80 l-25.98,15 a130 130 0 0 0 -112.62 -65" />
+
+<path style="stroke:none;fill:url(#lirt)" transform="rotate(300 180 170)" d="M180,10 a160 160 180 0 1 138.6 80 l-25.98,15 a130 130 0 0 0 -112.62 -65" />
+										 </g>
+</svg>

@@ -1,0 +1,35 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="onoff.svg">icons/control_on_off.svg</file>
+        <file alias="down.svg">icons/control_arrow_down.svg</file>
+        <file alias="up.svg">icons/control_arrow_up.svg</file>
+        <file alias="stop.svg">icons/stop_x.svg</file>
+        <file alias="control_plus.svg">icons/control_plus.svg</file>
+        <file alias="control_minus.svg">icons/control_minus.svg</file>
+        <file alias="phone_in.svg">icons/phone_call_in.svg</file>
+        <file alias="phone_out.svg">icons/phone_call_out.svg</file>
+        <file alias="phone_missed.svg">icons/phone_missed_in.svg</file>
+        <file alias="dimmer.svg">icons/dimmer.svg</file>
+        <file alias="fts_shutter_bg.svg">icons/fts_shutter_bg.svg</file>
+        <file alias="blade.svg">icons/fts_blade_arc.svg</file>
+        <file alias="weather.svg">icons/weather.svg</file>
+        <file alias="weather_wind.svg">icons/weather_wind.svg</file>
+        <file alias="shutter_arrows.svg">icons/shutter_arrows.svg</file>
+        <file alias="light_rgb.svg">icons/light_rgb.svg</file>
+        <file alias="colorpick.svg">icons/colorpick.svg</file>
+        <file alias="colorcircle.svg">icons/colorcircle.svg</file>
+        <file alias="phone_call.svg">icons/phone_call.svg</file>
+        <file alias="door_open.svg">icons/door_open.svg</file>
+        <file alias="phone_call_end.svg">icons/phone_call_end.svg</file>
+    </qresource>
+    <qresource prefix="/efa">
+        <file alias="s-bahn.png">icons/S-Bahn.png</file>
+        <file alias="u-bahn.png">icons/U-Bahn.png</file>
+        <file alias="zug.png">icons/Zug.png</file>
+        <file alias="bus.png">icons/Bus.png</file>
+        <file alias="straba.png">icons/Straba.png</file>
+    </qresource>
+    <qresource prefix="/">
+        <file>qtvisu.css</file>
+    </qresource>
+</RCC>

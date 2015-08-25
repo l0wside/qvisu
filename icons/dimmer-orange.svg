@@ -1,0 +1,31 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg viewBox="-2 -2 104 14"
+     xmlns="http://www.w3.org/2000/svg" version="1.1">
+
+	 <!-- START=4, LEN=92, RAD=3, RAD_S=2.5 -->
+<linearGradient id="verlauf" x1="0%" y1="0%" x2="100%" y2="100%">
+  <stop offset="0%" stop-color="black" />
+  <stop offset="100%" stop-color="white" />
+</linearGradient>
+	 
+  <path id="slider-bg" d="M#START#,2 l #LEN#,0
+           a#RAD#,3 0 0,1 0,6 l -#LEN#,0 
+           a#RAD#,3 0 0,1 0,-6z"
+        style="fill:#c0c0c0; stroke:none; stroke-width:2"  />
+  <path id="slider-fill" d="M#START#,2 l #POS#,0
+           l0,6 l -#POS#,0 
+           a#RAD#,3 0 0,1 0,-6z"
+        style="fill:#F69419; stroke:none; stroke-width:2"  />
+  <path id="slider-border" d="M#START#,2 l #LEN#,0
+           a#RAD#,3 0 0,1 0,6 l -#LEN#,0 
+           a#RAD#,3 0 0,1 0,-6z"
+        style="fill:none; stroke:#303030; stroke-width:1"  />
+  <path id="slider" d="M#POS#,0 
+           a#RAD_S#,3 0 0,1 0,10 
+           a#RAD_S#,3 0 0,1 0,-10z"
+        style="fill:url(#verlauf); stroke:none; "  />
+		
+		
+</svg>
