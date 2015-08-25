@@ -5,9 +5,11 @@
 QVFritz::QVFritz(QDomElement xml_desc, QString container, QWidget *parent) :
     QVElement(xml_desc,container,parent)
 {
-    w=4;
-    if (h < 2) {
-        h = 6;
+    if (w < 2) {
+        w=2;
+    }
+    if (h < 1) {
+        h = 1;
     }
 
     status = QVFritz::closed;
@@ -17,6 +19,7 @@ QVFritz::QVFritz(QDomElement xml_desc, QString container, QWidget *parent) :
     QDomElement e_password = xml_desc.firstChildElement("password");
     if (e_server.isNull() || e_username.isNull() || e_password.isNotation()) {
         qDebug() << "FB Authentication data incomplete";
+        socket = 0;
         return;
     }
 
@@ -45,6 +48,17 @@ QVFritz::QVFritz(QDomElement xml_desc, QString container, QWidget *parent) :
         }
     }
 
+    max_entries = 100;
+    QDomElement e_entries = xml_desc.firstChildElement("max-entries");
+    if (!e_entries.isNull()) {
+        bool ok;
+        int m = e_entries.text().toInt(&ok);
+        if (ok && (m > 0)) {
+            max_entries = m;
+        }
+    }
+
+
     QFile f;
     f.setFileName(":/icons/phone_in.svg");
     if (f.open(QIODevice::ReadOnly)) {
@@ -65,6 +79,8 @@ QVFritz::QVFritz(QDomElement xml_desc, QString container, QWidget *parent) :
     last_known_call = QDateTime::fromMSecsSinceEpoch(0);
     layout = new QGridLayout(this);
     setLayout(layout);
+    layout->setColumnStretch(0,1);
+    layout->setColumnStretch(1,1);
 
     server = e_server.text();
     username = e_username.text();
@@ -84,6 +100,7 @@ QVFritz::QVFritz(QDomElement xml_desc, QString container, QWidget *parent) :
     QObject::connect(dl_socket,SIGNAL(disconnected()),this,SLOT(onDLDisconnected()));
     QObject::connect(dl_socket,SIGNAL(readyRead()),this,SLOT(onDLDataReceived()));
     QObject::connect(this,SIGNAL(updateCallList(QDomElement)),this,SLOT(onCallListUpdated(QDomElement)));
+    qDebug() << "Fritz constructor done";
 }
 
 QVFritz::~QVFritz() {
@@ -98,6 +115,15 @@ void QVFritz::onCallListUpdated(QDomElement e_data) {
     if (e_call_list.count() <= 0) {
         return;
     }
+#if 0
+    for (int n=0; n < e_call_list.count(); n++) {
+        qDebug() << e_call_list.at(n).firstChildElement("Date").text()
+                 << e_call_list.at(n).firstChildElement("Type").text()
+                 << e_call_list.at(n).firstChildElement("Caller").text()
+                 << e_call_list.at(n).firstChildElement("Name").text();
+
+    }
+#endif
     QDomElement e_date = e_call_list.at(0).firstChildElement("Date");
     QDateTime reftime;
     if (e_date.isNull() || !(reftime = QDateTime::fromString(e_date.text(),"dd.MM.yy hh:mm")).isValid()) {
@@ -110,21 +136,14 @@ void QVFritz::onCallListUpdated(QDomElement e_data) {
     if (reftime.toMSecsSinceEpoch() <= last_known_call.toMSecsSinceEpoch()) {
         /* Update did not reveal any new calls */
 qDebug() << "out!";
-        return;
+//        return;
     }
-
-    int line_height = QLabel("Text",this).sizeHint().height();
-    int n_entries = (int)(floor(((double)height())/((double)line_height)));
-qDebug() << line_height << n_entries;
 
     for (int n=0; n < e_call_list.count(); n++) {
         QDomElement e_call = e_call_list.at(n).toElement();
         bool ok;
         int type = e_call.firstChildElement("Type").text().toInt(&ok);
         if (!ok) {
-            continue;
-        }
-        if (!show_list.contains(type)) {
             continue;
         }
 
@@ -135,86 +154,120 @@ qDebug() << line_height << n_entries;
         while (when.date().year() < 2000) {
             when = when.addYears(100);
         }
-        if (when.toMSecsSinceEpoch() <= last_known_call.toMSecsSinceEpoch()) {
-            break;
-        }
-        QLabel *w_time = new QLabel(this);
-        if (when.date() == QDateTime::currentDateTime().date()) {
-            w_time->setText(when.toString("h.mm"));
-        } else if (when.date().daysTo(QDateTime::currentDateTime().date()) < 7 ) {
-            w_time->setText(when.toString("ddd h:mm"));
-        } else {
-            w_time->setText(when.date().toString("d. MMM"));
-        }
 
-        QLabel *w_partner = new QLabel(this);
-        if (!e_call.firstChildElement("Name").isNull()) {
-            w_partner->setText(e_call.firstChildElement("Name").text());
+        QString partner;
+        if (!e_call.firstChildElement("Name").text().isEmpty()) {
+            partner = e_call.firstChildElement("Name").text();
         } else if ((type == 1) || (type == 2) || (type == 10)) {
-            w_partner->setText(e_call.firstChildElement("Caller").text());
+            partner = e_call.firstChildElement("Caller").text();
         } else {
-            w_partner->setText(e_call.firstChildElement("Called").text());
+            partner = e_call.firstChildElement("Called").text();
         }
-        if (w_partner->text().isEmpty()) {
-            delete w_partner;
-            delete w_time;
+#if 0
+        qDebug() << "Name" << e_call.firstChildElement("Name").text();
+        qDebug()  << "Caller" << e_call.firstChildElement("Caller").text();
+        qDebug()  << "Called" << e_call.firstChildElement("Called").text();
+        qDebug() << "Number" << e_call.firstChildElement("Number").text();
+        qDebug() << "Partner" << partner;
+#endif
+        if ((type == 1) || (type == 3)) {
+            if (last_successful_calls.contains(partner)) {
+                if (when > last_successful_calls[partner]) {
+                    last_successful_calls[partner] = when;
+                }
+            } else {
+                last_successful_calls.insert(partner,when);
+            }
+        }
+    }
+
+    missed_calls_count.clear();
+    for (int n=0; n < e_call_list.count(); n++) {
+        QDomElement e_call = e_call_list.at(n).toElement();
+        bool ok;
+        int type = e_call.firstChildElement("Type").text().toInt(&ok);
+        if (!ok) {
             continue;
         }
 
-        QVSvgWidget *w_icon = new QVSvgWidget(this);
-        switch (type) {
-        case 1:
-            w_icon->load(svg_in.toUtf8());
-            break;
-        case 2:
-        case 10:
-            w_icon->load(svg_missed.toUtf8());
-            break;
-        case 3:
-            w_icon->load(svg_out.toUtf8());
-            qDebug() << "OUT!";
-            break;
-        default: ;
+        QDateTime when = QDateTime::fromString(e_call.firstChildElement("Date").text(),"dd.MM.yy hh:mm");
+        if (!when.isValid()) {
+            continue;
+        }
+        while (when.date().year() < 2000) {
+            when = when.addYears(100);
         }
 
-        w_icons.prepend(w_icon);
-        w_times.prepend(w_time);
-        w_callers.prepend(w_partner);
-    }
+        QString partner;
+        if (!e_call.firstChildElement("Name").text().isEmpty()) {
+            partner = e_call.firstChildElement("Name").text();
+        } else if ((type == 1) || (type == 2) || (type == 10)) {
+            partner = e_call.firstChildElement("Caller").text();
+        } else {
+            partner = e_call.firstChildElement("Called").text();
+        }
+#if 0
+        QDomNodeList ll = e_call.childNodes();
+        for (int n=0; n < ll.count(); n++) {
+            if (ll.at(n).isElement()) {
+                qDebug() << "#" << ll.at(n).nodeName() << ll.at(n).toElement().text();
+            }
+        }
+#endif
+        if ((type == 2) || (type == 10)) {
+//            qDebug() << "Missed Call" << partner << when;
+            if ((last_successful_calls.contains(partner) && (last_successful_calls[partner] < when))
+            || (!last_successful_calls.contains(partner))) {
+                missed_calls_count[partner]++;
+            }
 
-//    qDebug() << "count" << w_icons.count() << w_times.count() << w_callers.count();
+            if (!last_missed_calls.contains(partner)) {
+                last_missed_calls.insert(partner,when);
+            }
 
-    while (w_icons.count() > n_entries) {
-        delete w_icons.last();
-        w_icons.pop_back();
-    }
-    while (w_times.count() > n_entries) {
-        delete w_times.last();
-        w_times.pop_back();
-    }
-    while (w_callers.count() > n_entries) {
-        delete w_callers.last();
-        w_callers.pop_back();
-    }
-//    qDebug() << "count" << w_icons.count() << w_times.count() << w_callers.count();
-
-    int width_time = 0;
-    for (QList<QLabel*>::iterator iter = w_times.begin(); iter != w_times.end(); iter++) {
-        if (width_time < (*iter)->sizeHint().width()) {
-            width_time = (*iter)->sizeHint().width();
+            if (last_missed_calls[partner] < when) {
+                last_missed_calls[partner] = when;
+            }
         }
     }
 
-    for (int n=0; n < w_icons.count(); n++) {
-        int m = n_entries-n-1;
-        w_icons.at(n)->setFixedSize(line_height,line_height);
-        w_icons.at(n)->move(ofs_x(),ofs_y()+m*line_height);
-        w_icons.at(n)->show();
-        w_times.at(n)->move(ofs_x()+line_height,ofs_y()+m*line_height);
-        w_times.at(n)->show();
-        w_callers.at(n)->setFixedWidth(width()-line_height-width_time-10);
-        w_callers.at(n)->move(ofs_x()+line_height+width_time+10,ofs_y()+m*line_height);
-        w_callers.at(n)->show();
+//    qDebug() << "Missed\n" << last_missed_calls;
+ //   qDebug() << "Success\n" << last_successful_calls;
+
+    QMap<QDateTime,QString> missed_calls_reversed;
+    QList<QDateTime> missed_call_keys;
+    for (int n=0; n < last_missed_calls.count(); n++) {
+        QString partner = last_missed_calls.keys().at(n);
+        missed_call_keys.append(last_missed_calls[partner]);
+        missed_calls_reversed.insert(last_missed_calls[partner],partner);
+    }
+
+//    qDebug() << missed_calls_reversed;
+    std::sort(missed_call_keys.begin(),missed_call_keys.end());
+
+    int row = 0;
+    for (int n=missed_call_keys.count()-1; n >= 0; n--) {
+        QDateTime when = missed_call_keys[n];
+        QString partner = missed_calls_reversed[when];
+        int count = missed_calls_count[partner];
+        if (count == 0) {
+            continue;
+        }
+
+        if (2*row+1 >= labels.count()) {
+            break;
+        }
+        labels[2*row]->setText(partner);
+        QString s_when;
+        if (when.date() == QDateTime::currentDateTime().date()) {
+            s_when = when.toString("h.mm");
+        } else if (when.date().daysTo(QDateTime::currentDateTime().date()) < 7 ) {
+            s_when = when.toString("ddd h:mm");
+        } else {
+            s_when = when.date().toString("d. MMM");
+        }
+        labels[2*row+1]->setText(s_when + " (" + QString::number(count) + ")");
+        row++;
     }
 }
 
@@ -233,7 +286,7 @@ void QVFritz::onConnected() {
             " <h:InitChallenge " +
             "xmlns:h=\"http://soap-authentication.org/digest/2001/10/\" " +
             "s:mustUnderstand=\"1\">\n" +
-            "<UserID>admin</UserID>\n" +
+            "<UserID>" + username + "</UserID>\n" +
             "</h:InitChallenge >\n" +
             "</s:Header>\n" +
             "<s:Body>\n" +
@@ -432,14 +485,11 @@ void QVFritz::onSoapReceived(QString, QDomElement soap) {
         }
 //qDebug() << "SID" << sid;
         if (!sid.isEmpty()) {
-            dl_request = QStringLiteral("") +
-                    "GET /calllist.lua?sid=" + sid + "&max=100 HTTP/1.1\r\n" +
-                    "Host: " + server + ":49000\r\n" +
-                    "Connection: close\r\n" +
-                    "\r\n";
-            status = QVFritz::calllist_pending;
-//            dl_socket->moveToThread(new QThread());
-            dl_socket->connectToHost(server,49000);
+            timer.setInterval(1000);
+            QObject::connect(&timer,SIGNAL(timeout()),this,SLOT(requestCallList()));
+            timer.setSingleShot(false);
+            timer_counter = 0;
+            timer.start();
         }
         return;
     }
@@ -448,13 +498,34 @@ void QVFritz::onSoapReceived(QString, QDomElement soap) {
     }
 }
 
+void QVFritz::requestCallList() {
+    qDebug() << "QVFritz::requestCallList" << timer_counter;
+    if (timer_counter > 0) {
+        timer_counter--;
+        return;
+    } else {
+        timer_counter = 60;
+	}
+
+    dl_request = QStringLiteral("") +
+            "GET /calllist.lua?sid=" + sid + "&max=" + QString::number(max_entries) + " HTTP/1.1\r\n" +
+            "Host: " + server + ":49000\r\n" +
+            "Connection: close\r\n" +
+            "\r\n";
+    status = QVFritz::calllist_pending;
+//            dl_socket->moveToThread(new QThread());
+    dl_socket->connectToHost(server,49000);
+    qDebug() << "QVFritz: connecting DL socket";
+}
+
 void QVFritz::onDLConnected() {
-    qDebug() << "DL connected";
+    qDebug() << "QVFritz: DL connected";
     dl_buffer.clear();
     dl_socket->write(dl_request.toUtf8());
 }
 
 void QVFritz::onDLDisconnected() {
+    qDebug() << "QVFritz: DL finished";
     if (dl_buffer.length() == 0) {
         return;
     }
@@ -483,6 +554,21 @@ void QVFritz::onDLDataReceived() {
 void QVFritz::resizeEvent(QResizeEvent *e) {
     qDebug() << "Fritz resizes";
     e->accept();
+
+    int lheight = QLabel("W").sizeHint().height();
+    QLabel *l = new QLabel("W");
+    l->setObjectName("mini");
+    int lheight_mini = l->sizeHint().height();
+    delete l;
+
+    int count = (int)floor(((double)height())/(lheight+lheight_mini));
+    for (int n = (int)floor(labels.count()/2); n < count; n++) {
+        labels.append(new QLabel(this));
+        layout->addWidget(labels.last(),2*n,0,1,1,Qt::AlignLeft);
+        labels.append(new QLabel(this));
+        labels.last()->setObjectName("mini");
+        layout->addWidget(labels.last(),2*n+1,0,1,1,Qt::AlignLeft);
+    }
 }
 
 void QVFritz::onValueChanged(QString,QString) {

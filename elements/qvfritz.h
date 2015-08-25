@@ -8,6 +8,7 @@
 #include <QString>
 #include <QDateTime>
 #include <QTime>
+#include <QTimer>
 #include <QTcpSocket>
 #include "../qvelement.h"
 #include "../qvsvgwidget.h"
@@ -37,13 +38,14 @@ protected slots:
     void onDataReceived();
     void onSoapReceived(QString, QDomElement);
 
+    void requestCallList();
     void onDLConnected();
     void onDLDisconnected();
     void onDLDataReceived();
 
     void onCallListUpdated(QDomElement);
 
-protected:
+private:
     QGridLayout *layout;
     QList<QLabel*> w_callers, w_times;
     QList<QVSvgWidget*> w_icons;
@@ -78,7 +80,15 @@ protected:
     static const unsigned int close_for_reopen = 60; /*
     static const unsigned int opening = 0; */
 
+    QMap<QString,QDateTime> last_successful_calls;
+    QMap<QString,QDateTime> last_missed_calls;
+    QMap<QString,int> missed_calls_count;
+
     int dummy2[32];
+
+    QList<QLabel*> labels;
+    QTimer timer;
+    int timer_counter;
 
     /* Authentication */
     QString server;
@@ -88,6 +98,7 @@ protected:
     QString realm;
     QString auth;
     QString sid;
+    int max_entries;
 
     /* Attachment Download */
     QTcpSocket *dl_socket;
