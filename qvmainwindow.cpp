@@ -45,20 +45,8 @@ QVMainWindow::QVMainWindow(uint dim_x, uint dim_y, QDomElement xml_data, QWidget
     this->dim_x = dim_x;
     this->dim_y = dim_y;
 
-#ifdef USE_LAYOUT
-    QGridLayout *topLayout = new QGridLayout(frame);
-    frame->setLayout(topLayout);
-    QSpacerItem *spacer_h = new QSpacerItem(0,0,QSizePolicy::Maximum,QSizePolicy::Minimum);
-    QSpacerItem *spacer_v = new QSpacerItem(0,0,QSizePolicy::Minimum,QSizePolicy::Maximum);
-    topLayout->addItem(spacer_h,0,0,dim_x,1);
-    topLayout->addItem(spacer_v,0,0,1,dim_y);
-    for (uint n=0; n < dim_x; n++) {
-        topLayout->setColumnStretch(n,1);
-    }
-    for (uint n=0; n < dim_y; n++) {
-        topLayout->setRowStretch(n,1);
-    }
-#endif
+    main_fallback_time = 0;
+    main_fallback_timer = 0;
 
     QDomNodeList containers = xml_data.elementsByTagName("container");
     for (int n=0; n < containers.count(); n++) {
@@ -67,11 +55,32 @@ QVMainWindow::QVMainWindow(uint dim_x, uint dim_y, QDomElement xml_data, QWidget
             qDebug() << "Invalid container";
             continue;
         }
+
+        if ((container.attribute("name") == "main") && (container.hasAttribute("fallback"))) {
+            bool ok;
+            main_fallback_time = container.attribute("fallback").toInt(&ok);
+            if ((!ok) || (main_fallback_time <= 0)) {
+                main_fallback_time = 0;
+            } else {
+                main_fallback_timer = new QTimer();
+                QObject::connect(main_fallback_timer,SIGNAL(timeout()),this,SLOT(onMainFallbackTimer()));
+                main_fallback_timer->setInterval(1000);
+                main_fallback_timer->start();
+                main_fallback_time_counter = main_fallback_time;
+            }
+        }
         for (QDomElement xml_elem = container.firstChildElement("element"); !xml_elem.isNull(); xml_elem = xml_elem.nextSiblingElement("element")) {
             QVElement *elem = QVElement::createQVElement(xml_elem,container.attribute("name"),this);
             if (elem != NULL) {
                 elements.append(elem);
             }
+        }
+    }
+
+    QDomElement e_disable_mouse = xml_data.firstChildElement("disable-mouse");
+    if (!e_disable_mouse.isNull()) {
+        if (e_disable_mouse.text().toLower() == "true") {
+            setCursor(Qt::BlankCursor);
         }
     }
 
@@ -82,9 +91,7 @@ QVMainWindow::QVMainWindow(uint dim_x, uint dim_y, QDomElement xml_data, QWidget
         if (geometry.count() < 4) {
             continue;
         }
-#ifdef USE_LAYOUT
-        topLayout->addWidget(*iter,geometry[1],geometry[0],geometry[3],geometry[2]);
-#endif
+
         item_list.append((*iter)->getItemList());
     }
     item_list.removeDuplicates();
@@ -108,6 +115,7 @@ QVMainWindow::QVMainWindow(uint dim_x, uint dim_y, QDomElement xml_data, QWidget
         QObject::connect(qv_driver,SIGNAL(seriesReceived(QString,QMap<double,double>)),*iter,SLOT(onSeriesReceived(QString,QMap<double,double>)));
         QObject::connect(qv_driver,SIGNAL(initialized()),*iter,SLOT(onInitCompleted()));
         QObject::connect(*iter,SIGNAL(requestSeries(QString,QString,QString)),qv_driver,SLOT(onSeriesRequest(QString,QString,QString)));
+        QObject::connect(this,SIGNAL(containerChanged(QString)),*iter,SLOT(onContainerChanged(QString)));
         for (QList<QVSelector*>::iterator iter_sel = selectors.begin(); iter_sel != selectors.end(); iter_sel++) {
             QObject::connect(*iter_sel,SIGNAL(containerChanged(QString)),*iter,SLOT(onContainerChanged(QString)));
         }
@@ -118,6 +126,8 @@ QVMainWindow::QVMainWindow(uint dim_x, uint dim_y, QDomElement xml_data, QWidget
     timer->setInterval(2000-QTime::currentTime().msec());
     QObject::connect(timer,SIGNAL(timeout()),this,SLOT(onTimerTimeout()));
     timer->start();
+
+    QCoreApplication::instance()->installEventFilter(this);
 
     /* Hide menu bars */
     QList<QToolBar *> allToolBars = findChildren<QToolBar *>();
@@ -157,6 +167,14 @@ void QVMainWindow::resizeEvent(QResizeEvent *) {
     }
 }
 
+bool QVMainWindow::eventFilter(QObject *obj, QEvent *event) {
+    if (((event->type() == QEvent::MouseButtonPress) || (event->type() == QEvent::MouseButtonRelease) || (event->type() == QEvent::MouseMove))
+            && (main_fallback_time > 0)) {
+        main_fallback_time_counter = main_fallback_time;
+    }
+    return QObject::eventFilter(obj,event);
+}
+
 void QVMainWindow::onTimerTimeout() {
     if (timer->interval() != 1000) {
         timer->setInterval(1000);
@@ -167,4 +185,17 @@ void QVMainWindow::onTimerTimeout() {
     emit valueGenerated("#date-int",QDateTime::currentDateTime().toString("yyyy-MM-dd"));
     emit valueGenerated("#date-de-weekday",QDateTime::currentDateTime().toString("ddd dd.MM.yyyy"));
     emit valueGenerated("#date-int-weekday",QDateTime::currentDateTime().toString("ddd yyyy-MM-dd"));
+}
+
+void QVMainWindow::onMainFallbackTimer() {
+    qDebug() << "oMFT" << main_fallback_time << main_fallback_time_counter;
+    if (main_fallback_time <= 0) {
+        return;
+    }
+    if (main_fallback_time_counter > 0) {
+        main_fallback_time_counter--;
+        return;
+    }
+    emit containerChanged("main");
+    main_fallback_time_counter = main_fallback_time;
 }

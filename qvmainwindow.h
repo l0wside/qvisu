@@ -39,9 +39,14 @@ public:
 
 signals:
     void valueGenerated(QString,QString);
+    void containerChanged(QString);
 
 protected slots:
     void onTimerTimeout();
+    void onMainFallbackTimer();
+
+protected:
+    bool eventFilter(QObject *obj, QEvent *event);
 
 private:
     void resizeEvent(QResizeEvent *);
@@ -56,6 +61,9 @@ private:
 
     QTimer *timer;
 
+    int main_fallback_time;
+    int main_fallback_time_counter;
+    QTimer *main_fallback_timer;
 };
 
 #endif // MAINWINDOW_H
