@@ -144,40 +144,28 @@ void QVSelector::onSvgPressed() {
     mousePressEvent(0);
 }
 
-void QVSelector::resizeEvent(QResizeEvent *event) {
-    if (event && (event->oldSize() == size())) {
-        return;
-    }
-
+void QVSelector::resizeEvent(QResizeEvent *) {
     int icon_height, icon_width = 0;
     if (w_icon) {
-        icon_height = height();
-        icon_width = (int)(icon_height / w_icon->aspectRatio());
-        if (icon_width > width() * max_icon_width()) {
-            icon_width = (int)(width() * max_icon_width());
-            icon_height = (int)(icon_width * w_icon->aspectRatio());
+        if (w_text->text().isEmpty()) {
+            fitInBox(w_icon,ofs_x(),ofs_y(),width(),height());
+        } else {
+            icon_height = height();
+            icon_width = (int)(icon_height / w_icon->aspectRatio());
+            if (icon_width > width() * max_icon_width()) {
+                icon_width = (int)(width() * max_icon_width());
+                icon_height = (int)(icon_width * w_icon->aspectRatio());
+            }
+            w_icon->setFixedSize(icon_width,icon_height);
+            w_icon->move(ofs_x(),ofs_y()+(int)((height()-icon_height)/2));
         }
-        w_icon->setFixedSize(icon_width,icon_height);
-        w_icon->move(ofs_x(),ofs_y()+(int)((height()-icon_height)/2));
     }
     w_text->move(ofs_x()+icon_width,ofs_y()+(int)((height()-w_text->sizeHint().height())/2));
 
     /* If there is only a single widget, display it vertically centered */
     if (disp_contents.count() == 1) {
         display_value_t *dv = disp_contents.first();
-        if (dv->widget->metaObject()->className() == QStringLiteral("QVSwitchIcon")) {
-            double ar = ((QVSwitchIcon*)(dv->widget))->aspectRatio();
-            h = (int)(height()/2);
-            w = (int)(h/ar);
-        } else {
-            w = dv->widget->sizeHint().width();
-            h = dv->widget->sizeHint().height();
-            if (h > height()) {
-                h = height();
-            }
-        }
-        dv->widget->setFixedSize(w,h);
-        dv->widget->move(ofs_x()+width()-w,ofs_y()+(int)((height()-h)/2));
+        fitInBox(dv->widget,width()+ofs_x(),ofs_y(),-(int)(height()/2),height());
         return;
     }
 
