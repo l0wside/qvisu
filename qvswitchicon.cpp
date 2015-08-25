@@ -14,7 +14,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Alle Icons sind unter einer Creative Commons Lizenz vom Typ Namensnennung -
- * Weitergabe unter gleichen Bedingungen 3.0 Deutschland zugänglich.
+ * Weitergabe unter gleichen Bedingungen 3.0 Deutschland zugaenglich.
  * Um eine Kopie dieser Lizenz einzusehen, konsultieren Sie
  * http://creativecommons.org/licenses/by-sa/3.0/de/ oder wenden Sie
  * sich brieflich an

@@ -48,7 +48,7 @@ QFrame* QVPopupFrame::content() {
 void QVPopupFrame::mousePressEvent(QMouseEvent *e) {
     if ((e->x() > inner_frame->x()) && (e->y() > inner_frame->y()) && (e->x() < inner_frame->x()+inner_frame->width()) && (e->y() < inner_frame->y()+inner_frame->height())) {
         /* Inside inner frame, reject */
-        emit clicked();
+        emit clicked(e->x() - inner_frame->x(),e->y() - inner_frame->y());
         return;
     }
     /* Outside click, hide popup */

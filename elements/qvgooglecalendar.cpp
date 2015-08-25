@@ -43,6 +43,7 @@ QVGoogleCalendar::QVGoogleCalendar(QDomElement xml_desc, QString container, QWid
     QDomElement e_calendar_id = xml_desc.firstChildElement("calendar-id");
     if (e_calendar_id.isNull()) {
         qDebug() << "Missing calendar id";
+        w_auth = 0;
         return;
     }
     calendar_id = e_calendar_id.text();
@@ -56,6 +57,8 @@ QVGoogleCalendar::QVGoogleCalendar(QDomElement xml_desc, QString container, QWid
             max_days = 365;
         }
     }
+
+    refresh_value = 120;
 
     network_manager = new QNetworkAccessManager();
     QObject::connect(network_manager,SIGNAL(finished(QNetworkReply*)),this,SLOT(onDataReceived(QNetworkReply*)));
@@ -73,21 +76,21 @@ QVGoogleCalendar::QVGoogleCalendar(QDomElement xml_desc, QString container, QWid
     }
     request.setHeader(QNetworkRequest::ContentTypeHeader,QStringLiteral("application/x-www-form-urlencoded"));
     network_manager->post(request,body.toUtf8());
-    qDebug() << request.url().toString() << "\n" << body;
+//    qDebug() << request.url().toString() << "\n" << body;
 	
-    w_auth.hide();
+    w_auth = new QLabel(this);
+    w_auth->hide();
 }
 
 void QVGoogleCalendar::onDataReceived(QNetworkReply *reply) {
-    qDebug() << "CALENDAR 2";
+/*    qDebug() << "CALENDAR 2";
     if (reply->isRunning()) {
         qDebug() << "Running reply";
         return;
     }
-
+*/
     QByteArray json = reply->readAll();
-    qDebug() << json;
-
+ 
     QJsonParseError result;
     QJsonDocument jsd = QJsonDocument::fromJson(json,&result);
     if (result.error != QJsonParseError::NoError) {
@@ -111,9 +114,11 @@ void QVGoogleCalendar::onDataReceived(QNetworkReply *reply) {
         if (auth_url.isEmpty()) {
             auth_url = "https://www.google.com/device";
         }
-        w_auth.setText("<center><b>Authentication required</b><p/>Go to " + auth_url + "<br/>and enter this code:<p/><font size=\"5\">" + jso.value("user_code").toString() + "</font></center>");
-        w_auth.show();
-        w_auth.raise();
+        if (w_auth) {
+            w_auth->setText("<center><b>Authentication required</b><p/>Go to " + auth_url + "<br/>and enter this code:<p/><font size=\"5\">" + jso.value("user_code").toString() + "</font></center>");
+            w_auth->show();
+            w_auth->raise();
+        }
 
         qDebug() << "First contact, verify " << jso.value("user_code").toString();
         device_code = jso.value("device_code").toString();
@@ -129,24 +134,32 @@ void QVGoogleCalendar::onDataReceived(QNetworkReply *reply) {
         timer->start();
         return;
     }
-    if (jso.contains("error") && (jso.value("error") == "authorization_pending")) {
+    if (jso.contains("error") && (jso.value("error").toString() == "authorization_pending")) {
         refresh_counter = refresh_value;
         timer->start();
         return;
     }
     if (jso.contains("access_token")) {
-        w_auth.hide();
+        if (w_auth) {
+            w_auth->hide();
+        }
         access_token = jso.value("access_token").toString();
         if (jso.contains("refresh_token")) {
             registry_settings->setValue(calendar_id + "/google_refresh_token",jso.value("refresh_token").toString());
             registry_settings->sync();
         }
         QObject::disconnect(timer,0,0,0);
+        timer->setSingleShot(false);
+        timer->setInterval(1000);
+        refresh_counter = refresh_value;
         QObject::connect(timer,SIGNAL(timeout()),this,SLOT(getEventList()));
+        timer->start();
+        qDebug() << "refresh init" << refresh_counter;
         do_getEventList(true);
+        qDebug() << "after dgEL" << refresh_counter;
     }
 
-    if (jso.contains("kind") && (jso.value("kind") == "calendar#events")) {
+    if (jso.contains("kind") && (jso.value("kind").toString() == "calendar#events")) {
         if (!jso.value("nextPageToken").isNull()) {
             next_page_token = jso.value("nextPageToken").toString();
         } else {
@@ -162,14 +175,14 @@ void QVGoogleCalendar::onDataReceived(QNetworkReply *reply) {
             QJsonObject o_item = j_items.at(n).toObject();
             QString id = o_item.value("id").toString();
 //            qDebug() << o_item.value("status").toString() << o_item.value("summary").toString() << id << entries.contains(id);
-            if (o_item.value("status") == "cancelled") {
+            if (o_item.value("status").toString() == "cancelled") {
                 if (entries.contains(id)) {
                     entries.remove(id);
                 }
                 continue;
             }
             QDateTime start_time, end_time;
-            bool all_day;
+            bool all_day = true;
 
             QJsonObject o_begin = o_item.value("start").toObject();
             if (o_begin.contains("date")) {
@@ -208,13 +221,9 @@ void QVGoogleCalendar::onDataReceived(QNetworkReply *reply) {
 
 
         showCalendarEvents();
-        if (next_page_token.isEmpty()) {
-            refresh_value = 300;
-        } else {
-            refresh_value = 0;
+        if (!next_page_token.isEmpty()) {
+            do_getEventList(false);
         }
-        refresh_counter = refresh_value;
-        timer->start();
     }
 
 //    qDebug() << reply->readAll();
@@ -241,6 +250,7 @@ void QVGoogleCalendar::getAccessToken() {
 }
 
 void QVGoogleCalendar::do_getEventList(bool initial_request = false) {
+    qDebug() << "QVGoogleCalendar::do_getEventList" << initial_request;
     QNetworkRequest request;
     QString url;
     url = "https://www.googleapis.com/calendar/v3/calendars/" + calendar_id + "/events";
@@ -262,17 +272,17 @@ void QVGoogleCalendar::do_getEventList(bool initial_request = false) {
     }
     request.setUrl(QUrl(url));
     network_manager->get(request);
-    qDebug() << url;
+    qDebug() << refresh_counter << url;
 }
 
 
 void QVGoogleCalendar::getEventList() {
+    qDebug() << "QVGoogleCalendar::getEventList()" << refresh_counter;
     if (refresh_counter > 0) {
         refresh_counter--;
-        timer->start();
         return;
     }
-
+    refresh_counter = refresh_value;
     do_getEventList(false);
 }
 
@@ -371,7 +381,9 @@ void QVGoogleCalendar::resizeEvent(QResizeEvent *e) {
         }
     }
 
-    w_auth.setFixedSize(size());
-    w_auth.move(0,0);
-    w_auth.setStyleSheet("QLabel { background-color:#ffffff; color:#000000 }");
+    if (w_auth) {
+        w_auth->setFixedSize(size());
+        w_auth->move(0,0);
+        w_auth->setStyleSheet("QLabel { background-color:#ffffff; color:#000000 }");
+    }
 }

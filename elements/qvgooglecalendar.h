@@ -63,7 +63,7 @@ private:
     QTimer *timer;
 
     QList<QLabel*> w_summary, w_date, w_location;
-    QLabel w_auth;
+    QLabel *w_auth;
 
     void do_getEventList(bool);
     void showCalendarEvents();

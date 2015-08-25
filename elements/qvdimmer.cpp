@@ -65,7 +65,11 @@ QVDimmer::QVDimmer(QDomElement xml_desc, QString container, QWidget *parent) :
     QObject::connect(w_sw_icon,SIGNAL(clicked(double,double)),this,SLOT(svgPressed()));
 
     xml_elem = xml_desc.firstChildElement("text");
-    w_text = new QLabel(xml_elem.text(),this);
+    if (xml_elem.isNull()) {
+        w_text = new QLabel(this);
+    } else {
+        w_text = new QLabel(xml_elem.text(),this);
+    }
 
     QString max_value_str;
     QString type_str;
@@ -177,6 +181,7 @@ void QVDimmer::resizeEvent(QResizeEvent * event) {
         w_text_ofs = 0;
     }
 
+    w_text->setFixedSize(w_text->sizeHint());
     w_text->move(ofs_x()+((int)(width()-w_text->sizeHint().width()+icon_width)/2),ofs_y()+content_height+w_text_ofs);
 }
 

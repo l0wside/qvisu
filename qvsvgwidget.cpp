@@ -32,7 +32,7 @@ QVSvgWidget::QVSvgWidget(QString file, QWidget *parent) :
 {
     QFile f(file);
     if (!f.open(QIODevice::ReadOnly)) {
-        qDebug() << "file not found";
+        qDebug() << "file not found" << file;
         return;
     }
     load(f.readAll());

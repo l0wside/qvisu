@@ -31,6 +31,7 @@ public:
     explicit QVIconWidget(QString file, QWidget *parent = 0);
 
     QSize defaultSize() const;
+    QSize sizeHint() const;
     float aspectRatio() const;
 
     void resizeEvent(QResizeEvent*);

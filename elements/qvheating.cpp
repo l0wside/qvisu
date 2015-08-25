@@ -97,7 +97,7 @@ QVHeating::QVHeating(QDomElement xml_desc, QString container, QWidget *parent) :
             continue;
         }
         QDomElement xml_elem = items.at(n).toElement();
-        if (!xml_elem.hasAttribute("action")) {
+        if (!xml_elem.hasAttribute("action") || xml_elem.text().isEmpty()) {
             continue;
         }
         if (xml_elem.text().isEmpty()) {
@@ -139,7 +139,7 @@ QVHeating::QVHeating(QDomElement xml_desc, QString container, QWidget *parent) :
             if (xml_elem.hasAttribute("icon")) {
                 hv->widget = new QVSwitchIcon(xml_elem.attribute("icon"),xml_elem.attribute("icon-color"),xml_elem.attribute("icon-active-color"),xml_elem.attribute("icon-color-mode"),this);
             } else {
-                hv->widget = 0;
+                hv->widget = new QVSwitchIcon(":/icons/onoff.svg","#ffffff","orange","replace",this);
             }
             hv->value = 0.0;
             hv->item = xml_elem.text();
@@ -259,6 +259,7 @@ void QVHeating::resizeEvent(QResizeEvent * event) {
         label_ofs = 0;
     }
     w_title->move(ofs_x()+(int)((width()-w_title->sizeHint().width()+icon_width)/2),ofs_y()+content_height+label_ofs);
+    w_title->setFixedSize(w_title->sizeHint());
 }
 
 void QVHeating::svgPressed() {

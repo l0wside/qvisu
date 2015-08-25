@@ -32,7 +32,7 @@ protected:
     void mousePressEvent(QMouseEvent *);
 
 signals:
-    void clicked();
+    void clicked(int,int);
 
 public slots:
     void show();

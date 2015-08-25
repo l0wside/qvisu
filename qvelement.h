@@ -51,10 +51,14 @@ public:
     /** Returns x,y,w,h in this order. */
     QList<int> getGeometry();
 
+    /** Create a new element. The subclass is determined from xml_desc */
+    static QVElement* createQVElement(QDomElement xml_desc,QString container,QWidget *parent);
     /** Try to find the file name in one of the directories specified by <path> */
     static QString findFilePath(QString name);
     /** Convert a Windows 8 color string to the #xxxxxx format. */
     static QString colorString(QString);
+    /** Resizes widget to fit into the box specified by x,y,w,h and centers it inside the box */
+    static void fitInBox(QWidget *widget, int x, int y, int w, int h);
 
 protected:
     /** Unless you use a layout, overload this method to place Qt widgets inside the element */
@@ -113,7 +117,5 @@ private:
     int y;
 
 };
-
-QVElement *createQVElement(QDomElement xml_desc, QString container, QWidget *parent = 0);
 
 #endif // QVELEMENT_H

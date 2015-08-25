@@ -14,7 +14,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Alle Icons sind unter einer Creative Commons Lizenz vom Typ Namensnennung -
- * Weitergabe unter gleichen Bedingungen 3.0 Deutschland zugänglich.
+ * Weitergabe unter gleichen Bedingungen 3.0 Deutschland zugaenglich.
  * Um eine Kopie dieser Lizenz einzusehen, konsultieren Sie
  * http://creativecommons.org/licenses/by-sa/3.0/de/ oder wenden Sie
  * sich brieflich an
@@ -217,12 +217,15 @@ void QVShutter::resizeEvent(QResizeEvent * event) {
         if (w_icon) {
             w_icon->hide();
         }
-        w_text->move(ofs_x()+(int)((width()-(w_text->sizeHint().width()))/2),height()-w_text->sizeHint().height());
+        w_text->setFixedSize(w_text->sizeHint());
+        w_text->move(ofs_x()+(int)((width()-(w_text->width()))/2),height()-w_text->height()+5);
     } else {
         w_icon->setFixedSize(icon_width,icon_height);
-        w_icon->move(ofs_x()+(int)((width()-icon_width-w_text->sizeHint().width())/2),height()-icon_height);
-        w_text->move(ofs_x()+(int)((width()+icon_width-w_text->sizeHint().width())/2),height()-(int)((icon_height+w_text->sizeHint().height())/2));
+        w_icon->move(ofs_x()+(int)((width()-icon_width-w_text->width())/2),height()-icon_height);
+        w_text->setFixedSize(w_text->sizeHint());
+        w_text->move(ofs_x()+(int)((width()+icon_width-w_text->width())/2),height()-(int)((icon_height+w_text->height())/2)+5);
     }
+    qDebug() << "shutter label size" << w_text->size() << w_text->pos() << size();
 
 
     /* Place elements in popup */

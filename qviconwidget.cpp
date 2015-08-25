@@ -20,6 +20,7 @@
 #include <QMouseEvent>
 #include <QPixmap>
 #include "qviconwidget.h"
+#include "qvelement.h"
 
 QVIconWidget::QVIconWidget(QWidget *parent) :
     QFrame(parent)
@@ -42,9 +43,9 @@ QVIconWidget::QVIconWidget(QString file, QWidget *parent) :
 
     setContentsMargins(0,0,0,0);
 
-    QFile f(file);
+    QFile f(QVElement::findFilePath(file));
     if (!f.open(QIODevice::ReadOnly)) {
-        qDebug() << "file not found";
+        qDebug() << "file not found" << file;
         return;
     }
     load(f.readAll());
@@ -63,6 +64,10 @@ QSize QVIconWidget::defaultSize() const {
         return pixmap->size();
     }
     return QSize(0,0);
+}
+
+QSize QVIconWidget::sizeHint() const {
+    return defaultSize();
 }
 
 float QVIconWidget::aspectRatio() const {
@@ -96,8 +101,6 @@ void QVIconWidget::resizeEvent(QResizeEvent *e) {
     if (e->oldSize() == size()) {
         return;
     }
-    qDebug() << "res" << size();
-
     if (!pix_widget == 0) {
         int w = width()-frameWidth();
         int h = height()-frameWidth();
