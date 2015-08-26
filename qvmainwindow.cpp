@@ -156,13 +156,19 @@ void QVMainWindow::resizeEvent(QResizeEvent *) {
         raster = raster_h;
     }
 
+    int eff_w = (raster+spacing) * dim_x - spacing;
+    int eff_h = (raster+spacing) * dim_y - spacing;
+    int ofs_x = (int)((w-eff_w)/2);
+    int ofs_y = (int)((h-eff_h)/2);
+    qDebug() << "w/h" << w << h << "ofs" << ofs_x << ofs_y;
+
     for (QList<QVElement*>::iterator iter = elements.begin(); iter != elements.end(); iter++) {
         QList<int> geometry = (*iter)->getGeometry();
         if ((geometry[0]+geometry[2] > dim_x) || ((geometry[1]+geometry[3] > dim_y))) {
             qDebug() << "Element outside of raster space" << dim_x << dim_y << geometry[0] << geometry[1] << geometry[2] << geometry[3];
             continue;
         }
-        (*iter)->move(geometry[0]*(raster+spacing),geometry[1]*(raster+spacing));
+        (*iter)->move(geometry[0]*(raster+spacing)+ofs_x,geometry[1]*(raster+spacing)+ofs_y);
         (*iter)->setFixedSize(geometry[2]*raster + (geometry[2]-1)*spacing,geometry[3]*raster + (geometry[3]-1)*spacing);
     }
 }
