@@ -98,7 +98,9 @@ private:
     QString realm;
     QString auth;
     QString sid;
+
     int max_entries;
+    int max_days;
 
     /* Attachment Download */
     QTcpSocket *dl_socket;

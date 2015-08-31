@@ -4,8 +4,8 @@
         <file alias="down.svg">icons/control_arrow_down.svg</file>
         <file alias="up.svg">icons/control_arrow_up.svg</file>
         <file alias="stop.svg">icons/stop_x.svg</file>
-        <file alias="control_plus.svg">icons/control_plus.svg</file>
-        <file alias="control_minus.svg">icons/control_minus.svg</file>
+        <file alias="plus.svg">icons/control_plus.svg</file>
+        <file alias="minus.svg">icons/control_minus.svg</file>
         <file alias="phone_in.svg">icons/phone_call_in.svg</file>
         <file alias="phone_out.svg">icons/phone_call_out.svg</file>
         <file alias="phone_missed.svg">icons/phone_missed_in.svg</file>

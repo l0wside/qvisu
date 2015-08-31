@@ -440,7 +440,6 @@ void QVColor::onPopupClicked(int x, int y) {
     double xnorm = (double)(2*x-popup_frame->content()->width())/((double)(2*popup_frame->content()->width()));
     double ynorm = (double)(popup_frame->content()->width()-2*y)/((double)(2*popup_frame->content()->width()));
     double r = 2*sqrt(xnorm*xnorm+ynorm*ynorm);
-    qDebug() << "popup clicked" << x << y << "norm" << xnorm << ynorm << "r" << r;
 
     if (r > 1) {
         return;

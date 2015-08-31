@@ -22,6 +22,7 @@ public:
     void onIncomingCall_wrapper(int call_id);
     void onCallState_wrapper(int call_id,QString state);
     void onCallMediaState_wrapper(int call_id);
+    void onFilePlayed_wrapper();
 
 protected:
     void resizeEvent(QResizeEvent*);
@@ -55,9 +56,14 @@ private:
     QString code_accept, code_hangup, code_dooropen;
 
     pj_pool_t          *pj_pool;
+    pj_caching_pool    pj_cpool;
     pjmedia_port       *pj_tonegen;
     pjsua_conf_port_id  pj_toneslot;
 
+    /* Doorbell tone */
+    pjmedia_port *bell_file_port;
+    pjsua_conf_port_id bell_port_id;
+    char *bell_wav;
 };
 
 

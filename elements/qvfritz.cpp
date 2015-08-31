@@ -58,6 +58,16 @@ QVFritz::QVFritz(QDomElement xml_desc, QString container, QWidget *parent) :
         }
     }
 
+    max_days = 0;
+    QDomElement e_days = xml_desc.firstChildElement("max-days");
+    if (!e_days.isNull()) {
+        bool ok;
+        int m = e_days.text().toInt(&ok);
+        if (ok && (m > 0)) {
+            max_days = m;
+        }
+    }
+    qDebug() << "FitzFon max days" << max_days;
 
     QFile f;
     f.setFileName(":/icons/phone_in.svg");
@@ -111,6 +121,10 @@ QVFritz::~QVFritz() {
 }
 
 void QVFritz::onCallListUpdated(QDomElement e_data) {
+    for (int n=0; n < labels.count(); n++) {
+        labels[n]->setText("");
+    }
+
     QDomNodeList e_call_list = e_data.elementsByTagName("Call");
     if (e_call_list.count() <= 0) {
         return;
@@ -131,12 +145,6 @@ void QVFritz::onCallListUpdated(QDomElement e_data) {
     }
     while (reftime.date().year() < 2000) {
         reftime = reftime.addYears(100);
-    }
-    qDebug() << "OCLU" << reftime << last_known_call;
-    if (reftime.toMSecsSinceEpoch() <= last_known_call.toMSecsSinceEpoch()) {
-        /* Update did not reveal any new calls */
-qDebug() << "out!";
-//        return;
     }
 
     for (int n=0; n < e_call_list.count(); n++) {
@@ -248,6 +256,13 @@ qDebug() << "out!";
     int row = 0;
     for (int n=missed_call_keys.count()-1; n >= 0; n--) {
         QDateTime when = missed_call_keys[n];
+
+        if ((max_days > 0) && (when.daysTo(QDateTime::currentDateTime()) > max_days)) {
+            continue;
+        }
+        qDebug() << when;
+
+
         QString partner = missed_calls_reversed[when];
         int count = missed_calls_count[partner];
         if (count == 0) {
@@ -499,7 +514,7 @@ void QVFritz::onSoapReceived(QString, QDomElement soap) {
 }
 
 void QVFritz::requestCallList() {
-    qDebug() << "QVFritz::requestCallList" << timer_counter;
+//    qDebug() << "QVFritz::requestCallList" << timer_counter;
     if (timer_counter > 0) {
         timer_counter--;
         return;

@@ -1,5 +1,9 @@
+#define DOORBELL_WAV
+#define USE_INBAND
+
 #include "qvdoorcom.h"
 #include <pjsua-lib/pjsua.h>
+#include <stdint.h>
 
 int QVDoorcom::instance_count = 0;
 QVDoorcom *doorcom = 0;
@@ -14,6 +18,9 @@ static void on_call_state(pjsua_call_id call_id, pjsip_event *e);
 
 /* Callback called by PJSUA when call's media state has changed */
 static void on_call_media_state(pjsua_call_id call_id);
+
+/* Callback called by PJMEDIA when the doorbell file has been played */
+static pj_status_t on_file_played(pjmedia_port *port, void *usr_data);
 }
 
 QVDoorcom::QVDoorcom(QDomElement xml_desc, QString container, QWidget *parent) :
@@ -67,6 +74,87 @@ QVDoorcom::QVDoorcom(QDomElement xml_desc, QString container, QWidget *parent) :
         code_dooropen = e_dooropen.text();
     }
 
+    QFile f_doorbell;
+    QString s_doorbell_name;
+    bool doorbell_ok;
+    bell_wav = 0;
+    QDomElement e_doorbell = xml_desc.firstChildElement("ringtone");
+    if (!e_doorbell.isNull()) {
+        s_doorbell_name = findFilePath(e_doorbell.text());
+        f_doorbell.setFileName(findFilePath(e_doorbell.text()));
+        f_doorbell.open(QIODevice::ReadOnly);
+    }
+    if (!f_doorbell.isOpen()) {
+        f_doorbell.setFileName(":/sounds/doorbell.wav");
+        f_doorbell.open(QIODevice::ReadOnly);
+    }
+
+#ifndef DOORBELL_WAV
+    QByteArray riff = f_doorbell.read(12);
+    if (riff.length() < 12) {
+        doorbell_ok = false;
+    } else {
+        if (!riff.startsWith("RIFF") || !riff.endsWith("WAVE")) {
+            doorbell_ok = false;
+        }
+    }
+
+    QByteArray fmthdr = f_doorbell.read(8);
+    if (!fmthdr.startsWith("fmt")) {
+        doorbell_ok = false;
+    }
+    uint32_t fmt_len;
+    memcpy(&fmt_len,fmthdr.mid(4).data(),4);
+    qDebug() << "fmt len" << fmt_len;
+    if (fmt_len < 16) {
+        doorbell_ok = false;
+    }
+    QByteArray fmt = f_doorbell.read(fmt_len);
+    uint16_t audio_format;
+    uint16_t num_channels;
+    uint32_t sample_rate;
+    uint32_t byte_rate;
+    uint16_t block_align;
+    uint16_t bits_per_sample;
+    uint32_t bell_datalen;
+
+#if (BYTE_ORDER != __LITTLE_ENDIAN)
+#error Adapt endianness in __FILE__
+#endif
+
+    if (fmt.length() < fmt_len) {
+        doorbell_ok = false;
+    } else {
+        memcpy(&audio_format,fmt.mid(0).data(),2);
+        memcpy(&num_channels,fmt.mid(2).data(),2);
+        memcpy(&sample_rate,fmt.mid(4).data(),4);
+        memcpy(&byte_rate,fmt.mid(8).data(),4);
+        memcpy(&block_align,fmt.mid(12).data(),2);
+        memcpy(&bits_per_sample,fmt.mid(14).data(),2);
+    }
+
+    qDebug() << audio_format << "nch" << num_channels << "samplerate" << sample_rate << "byztera" << byte_rate << "blocka" << block_align << "bps" << bits_per_sample;
+    if (audio_format != 0x0001) {
+        doorbell_ok = false;
+    }
+
+    if (doorbell_ok) {
+        QByteArray datahdr = f_doorbell.read(8);
+        if (!datahdr.startsWith("data") || (datahdr.length() < 8)) {
+            doorbell_ok = false;
+        } else {
+            memcpy(&bell_datalen,datahdr.mid(4).data(),4);
+        }
+        if (doorbell_ok && (bell_datalen > 0)) {
+            QByteArray data = f_doorbell.read(bell_datalen);
+            bell_wav = (char*)malloc(bell_datalen);
+            if (bell_wav != 0) {
+                memcpy(bell_wav,data.data(),bell_datalen);
+            }
+        }
+    }
+#endif
+
     active_call = -1;
 
     QObject::connect(this,SIGNAL(incomingCall(int)),this,SLOT(onIncomingCall(int)),Qt::QueuedConnection);
@@ -85,7 +173,7 @@ QVDoorcom::QVDoorcom(QDomElement xml_desc, QString container, QWidget *parent) :
     QObject::connect(&hangup_timer,SIGNAL(timeout()),this,SLOT(onHangupTimer()));
 
     dtmf_timer.setSingleShot(true);
-    dtmf_timer.setInterval(800);
+    dtmf_timer.setInterval(200);
     QObject::connect(&dtmf_timer,SIGNAL(timeout()),this,SLOT(onDTMFTimer()));
 
     /******* Init PJSUA ********/
@@ -102,6 +190,7 @@ QVDoorcom::QVDoorcom(QDomElement xml_desc, QString container, QWidget *parent) :
     /* Init pjsua */
     pjsua_config cfg;
     pjsua_logging_config log_cfg;
+    pjsua_media_config media_cfg;
 
     pjsua_config_default(&cfg);
     cfg.cb.on_incoming_call = &on_incoming_call;
@@ -111,7 +200,11 @@ QVDoorcom::QVDoorcom(QDomElement xml_desc, QString container, QWidget *parent) :
     pjsua_logging_config_default(&log_cfg);
     log_cfg.console_level = 1;
 
-    status = pjsua_init(&cfg, &log_cfg, NULL);
+    pjsua_media_config_default(&media_cfg);
+    media_cfg.clock_rate = 8000;
+    media_cfg.ec_tail_len = 0;
+
+    status = pjsua_init(&cfg, &log_cfg, &media_cfg);
     if (status != PJ_SUCCESS) {
         qDebug() << "Cannot init PJSUA SIP client, cause: " << status;
         return;
@@ -153,6 +246,73 @@ QVDoorcom::QVDoorcom(QDomElement xml_desc, QString container, QWidget *parent) :
         qDebug() << "PJSUA auth data invalid, cause: " << status;
         return;
     }
+
+    qDebug() << "PJSUA ports" << pjsua_conf_get_active_ports();
+    pjsua_conf_port_info info;
+    pjsua_conf_get_port_info (0, &info);
+    qDebug() << pj2qstring(info.name);
+
+//    pjsua_conf_adjust_tx_level(0,0.0);
+
+    pj_caching_pool_init(&pj_cpool, &pj_pool_factory_default_policy, 0);
+    pj_pool = pjsua_pool_create("qvisu", 8192, 8192);
+
+#ifndef DOORBELL_WAV
+    if (doorbell_ok && (bell_wav != 0)) {
+        status = pjmedia_mem_player_create(pj_pool,
+                                           bell_wav,
+                                           bell_datalen,
+                                           sample_rate,
+                                           num_channels,
+                                           16384,
+                                           bits_per_sample,
+                                           0,//PJMEDIA_MEM_NO_LOOP,
+                                           &bell_file_port);
+
+        qDebug() << "Bell memory player" << status;
+
+        status = pjsua_conf_add_port(pj_pool,bell_file_port,&bell_port_id);
+        qDebug() << "bell file add status" << status << "id" << bell_port_id;
+
+        status = pjmedia_mem_player_set_eof_cb 	(bell_file_port,
+                                                 0,
+                                                 &on_file_played);
+
+    } else {
+        bell_file_port = 0;
+    }
+#else
+    qDebug() << "Doorbell file" << s_doorbell_name;
+    if (s_doorbell_name.isEmpty()) {
+        bell_file_port = 0;
+    } else {
+        /* Create file media port for doorbell from the WAV file */
+        status = pjmedia_wav_player_port_create(pj_pool,	/* memory pool	    */
+                                                strdup(s_doorbell_name.toUtf8().data()),	/* file to play	    */
+                                                20,	/* ptime.	    */
+                                                PJMEDIA_FILE_NO_LOOP,	/* flags	    */
+                                                0,	/* default buffer   */
+                                                &bell_file_port/* returned port    */
+                                                );
+        if (status != PJ_SUCCESS) {
+            qDebug() << "Cannot open wav file" << status;
+            bell_file_port = 0;
+        }
+    }
+
+    if (bell_file_port != 0) {
+        status = pjsua_conf_add_port(pj_pool,bell_file_port,&bell_port_id);
+        qDebug() << "bell file add status" << status << "id" << bell_port_id;
+
+        status = pjmedia_wav_player_set_eof_cb 	(bell_file_port,
+                                                 0,
+                                                 &on_file_played);
+        if (status != PJ_SUCCESS) {
+            qDebug() << "Cannot register callback";
+            bell_file_port = 0;
+        }
+    }
+#endif
 }
 
 void QVDoorcom::resizeEvent(QResizeEvent*) {
@@ -203,6 +363,8 @@ QString QVDoorcom::pj2qstring(pj_str_t pstr) {
 }
 
 void QVDoorcom::onIncomingCall(int call_id) {
+    pj_status_t status;
+
     if (active_call >= 0) {
         return;
     }
@@ -210,6 +372,16 @@ void QVDoorcom::onIncomingCall(int call_id) {
     active_call = call_id;
     w_dooropen->hide();
     popup->show();
+#ifdef DOORBELL_WAV
+    status = pjmedia_wav_player_port_set_pos(bell_file_port,0);
+    qDebug() << "Rewind status" << status;
+    if (status == PJ_SUCCESS) {
+        pjsua_conf_connect(bell_port_id,0);
+//        pjsua_conf_adjust_tx_level(0,1.0);
+    }
+#else
+    pjsua_conf_connect(bell_port_id,0);
+#endif
 }
 
 void QVDoorcom::onCallState(int call_id, QString state) {
@@ -220,14 +392,13 @@ void QVDoorcom::onCallState(int call_id, QString state) {
     if (state == "DISCONNCTD") {
         popup->hide();
         active_call = -1;
+//        pjsua_conf_adjust_tx_level(0,0.0);
     }
     if (state == "CONFIRMED") {
         w_dooropen->show();
 
         /* Create DTMF generator */
         pjsua_call_info ci;
-
-            pj_pool = pjsua_pool_create("qvisu", 8192, 8192);
 
         qDebug() << "2" << pjmedia_tonegen_create(pj_pool, 16000, 1, 160, 16, 0, &pj_tonegen);
         qDebug() << "3" << pjsua_conf_add_port(pj_pool, pj_tonegen, &pj_toneslot);
@@ -250,8 +421,8 @@ void QVDoorcom::onCallState(int call_id, QString state) {
             pj_bzero(d, sizeof(d));
             for (i=0; i<count; i++) {
                 d[i].digit = code_accept.at(i).toLatin1();
-                d[i].on_msec = 200;
-                d[i].off_msec = 200;
+                d[i].on_msec = 80;
+                d[i].off_msec = 80;
                 d[i].volume = 32767;
             }
 
@@ -276,6 +447,8 @@ void QVDoorcom::onAcceptPressed() {
         return;
     }
 
+    pjsua_conf_disconnect(bell_port_id,0);
+
     pjsua_call_answer(active_call, 200, NULL, NULL);
 
 }
@@ -290,7 +463,9 @@ void QVDoorcom::onHangupPressed() {
     if (!pjsua_call_get_info(active_call, &ci) == PJ_SUCCESS) {
         return;
     }
-    if (ci.state == PJSIP_INV_STATE_INCOMING) {
+    pjsua_conf_disconnect(bell_port_id,0);
+    qDebug() << pj2qstring( ci.state_text);
+    if ((ci.state == PJSIP_INV_STATE_INCOMING) || (ci.state == PJSIP_INV_STATE_EARLY)) {
         pjsua_call_answer(active_call,486,NULL,NULL); /* Reject with busy */
         active_call = -1;
     } else if (ci.state == PJSIP_INV_STATE_CONNECTING) {
@@ -298,9 +473,34 @@ void QVDoorcom::onHangupPressed() {
         active_call = -1;
     } else {
         if (!code_hangup.isEmpty()) {
+#ifdef USE_INBAND
+            pjmedia_tone_digit d[16];
+            unsigned i, count = code_hangup.length();
+
+            if (count > PJ_ARRAY_SIZE(d)) {
+                count = PJ_ARRAY_SIZE(d);
+            }
+
+            pj_bzero(d, sizeof(d));
+            int n=0;
+            for (i=0; i<count; i++) {
+                char code = code_hangup.at(i).toLatin1();
+                qDebug() << "i" << i << code << "n" << n;
+                if (((code < '0') || (code > '9')) && (code != '*') && (code != '#')) {
+                    continue;
+                }
+                d[n].digit = code;
+                d[n].on_msec = 200;
+                d[n].off_msec = 200;
+                d[n].volume = 0;
+                n++;
+            }
+            pjmedia_tonegen_play_digits(pj_tonegen, n, d, 0);
+#else
             pj_str_t code = pj_str(strdup(code_hangup.toUtf8().data()));
             pjsua_call_dial_dtmf(active_call,&code);
-            hangup_timer.setInterval(300*code_hangup.length());
+#endif
+            hangup_timer.setInterval(400*code_hangup.length());
         } else {
             hangup_timer.setInterval(100);
         }
@@ -323,9 +523,34 @@ void QVDoorcom::onDoorOpenPressed() {
     }
     popup->hide();
     if (!code_dooropen.isEmpty()) {
+#ifdef USE_INBAND
+        pjmedia_tone_digit d[16];
+        unsigned i, count = code_dooropen.length();
+
+        if (count > PJ_ARRAY_SIZE(d)) {
+            count = PJ_ARRAY_SIZE(d);
+        }
+
+        pj_bzero(d, sizeof(d));
+        int n=0;
+        for (i=0; i<count; i++) {
+            char code = code_dooropen.at(i).toLatin1();
+            qDebug() << "i" << i << code << "n" << n;
+            if (((code < '0') || (code > '9')) && (code != '*') && (code != '#')) {
+                continue;
+            }
+            d[n].digit = code;
+            d[n].on_msec = 200;
+            d[n].off_msec = 200;
+            d[n].volume = 0;
+            n++;
+        }
+        pjmedia_tonegen_play_digits(pj_tonegen, n, d, 0);
+#else
         pj_str_t code = pj_str(strdup(code_dooropen.toUtf8().data()));
         pjsua_call_dial_dtmf(active_call,&code);
-        hangup_timer.setInterval(300*code_dooropen.length());
+#endif
+        hangup_timer.setInterval(400*code_dooropen.length());
     } else {
         hangup_timer.setInterval(100);
     }
@@ -373,6 +598,15 @@ void QVDoorcom::onCallMediaState_wrapper(int call_id) {
     emit callMediaState(call_id);
 }
 
+void QVDoorcom::onFilePlayed_wrapper() {
+    pj_status_t status;
+
+    status = pjsua_conf_disconnect(bell_port_id,0);
+    if (status != PJ_SUCCESS) {
+        qDebug() << "bell file played, disconnect:" << status;
+    }
+}
+
 
 /* Callback called by PJSUA upon receiving incoming call */
 static void on_incoming_call(pjsua_acc_id acc_id, pjsua_call_id call_id,
@@ -414,4 +648,16 @@ static void on_call_media_state(pjsua_call_id call_id) {
     }
     pjsua_conf_connect(ci.conf_slot, 0);
     pjsua_conf_connect(0, ci.conf_slot);
+}
+
+/* Callback called by PJMEDIA when the doorbell file has been played */
+static pj_status_t on_file_played(pjmedia_port *, void *) {
+    qDebug() << "File played";
+
+    if (!doorcom) {
+        return PJ_SUCCESS;
+    }
+
+    doorcom->onFilePlayed_wrapper();
+    return PJ_SUCCESS;
 }

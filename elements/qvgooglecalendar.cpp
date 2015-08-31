@@ -89,19 +89,30 @@ void QVGoogleCalendar::onDataReceived(QNetworkReply *reply) {
         return;
     }
 */
+
+    bool illegal_value = false;
     QByteArray json = reply->readAll();
  
     QJsonParseError result;
+    QJsonObject jso;
+
     QJsonDocument jsd = QJsonDocument::fromJson(json,&result);
     if (result.error != QJsonParseError::NoError) {
         qDebug() << "Incorrect JSON" << result.errorString();
-        return;
+        if (json.toLower().startsWith("illegal value")) {
+            illegal_value = true;
+        } else {
+            return;
+        }
     }
-    QJsonObject jso = jsd.object();
+    if (!illegal_value) {
+        jso = jsd.object();
+    }
 
-    if (jso.contains("error")
-            && ((jso.value("error").toString() == "invalid_request") || (jso.value("error").toString() == "invalid_grant"))) {
-        /* Invalid refresh token, start all over again */
+    if (illegal_value ||
+            (jso.contains("error")
+            && ((jso.value("error").toString() == "invalid_request") || (jso.value("error").toString() == "invalid_grant")))) {
+        /* Invalid refresh token or illegal value, start all over again */
         QNetworkRequest request;
         request.setUrl(QUrl("https://accounts.google.com/o/oauth2/device/code"));
         QString body = QString("client_id=" + client_id + "&scope=" + scope);
@@ -250,7 +261,7 @@ void QVGoogleCalendar::getAccessToken() {
 }
 
 void QVGoogleCalendar::do_getEventList(bool initial_request = false) {
-    qDebug() << "QVGoogleCalendar::do_getEventList" << initial_request;
+//    qDebug() << "QVGoogleCalendar::do_getEventList" << initial_request;
     QNetworkRequest request;
     QString url;
     url = "https://www.googleapis.com/calendar/v3/calendars/" + calendar_id + "/events";
@@ -287,6 +298,7 @@ void QVGoogleCalendar::getEventList() {
 }
 
 void QVGoogleCalendar::showCalendarEvents() {
+    qDebug() << "QVGoogleCalendar::showCalendarEvents(), #entries:" << entries.count();
     QMultiMap<QDateTime,QString> events_by_date;
 
     for (QMap<QString,calendar_entry>::iterator iter = entries.begin(); iter != entries.end(); iter++) {
@@ -309,6 +321,7 @@ void QVGoogleCalendar::showCalendarEvents() {
 
 
     if (keylist.count() == 0) {
+        qDebug() << "empty keylist";
         for (int n=0; n < w_summary.count(); n++) {
             w_summary[n]->clear();
             w_date[n]->clear();
