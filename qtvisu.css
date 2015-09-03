@@ -1,0 +1,84 @@
+QLabel {
+font-size: 16pt;
+color: #000000;
+font-family: Segoe UI;
+}
+
+QLabel#mini {
+font-size: 12pt;
+font-family: Segoe UI;
+}
+
+
+QLabel#title {
+font-size: 18pt;
+color: #ffffff;
+background: #1ba1e2;
+padding: 8px;
+}
+
+QFrame#element {
+margin: 3px;
+border-style: none;
+background: #1ba1e2;
+padding: 4px;
+}
+
+QFrame#main {
+border-width: 0px;
+border-color: #000000;
+border-radius: 0px;
+background: #303030;
+}
+
+QFrame#popup {
+border-width: 3px;
+border-style: solid;
+background: #a4c400;
+padding: 10px;
+}
+/*
+QLabel {
+font-size: 14pt;
+color: #f0f0f0;
+}
+
+QLabel#mini {
+font-size: 10pt;
+}
+
+
+QLabel#title {
+font-size: 18pt;
+color: #0f0f0f;
+background: #f0f0f0;
+padding: 8px;
+border-radius: 10px;
+}
+
+QFrame#element {
+margin: 3px;
+border-width: 1px;
+border-style: solid;
+border-color: #707070;
+border-radius: 20px;
+background: #202020;
+padding: 8px;
+}
+
+QFrame#main {
+border-width: 0px;
+border-color: #000000;
+border-radius: 0px;
+background: #303030;
+}
+
+QFrame#popup {
+border-width: 3px;
+border-style: solid;
+border-color: #707070;
+border-radius: 10px;
+background: #202020;
+padding: 10px;
+}
+*/
